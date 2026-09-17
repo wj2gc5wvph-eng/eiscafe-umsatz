@@ -1,0 +1,9 @@
+{
+  "name": "Eiscafé Umsatz",
+  "short_name": "Eiscafé Umsatz",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f7f7f8",
+  "theme_color": "#f59e0b",
+  "icons": []
+}

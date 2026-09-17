@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f59e0b">
+<title>Eiscafé Umsatz</title>
+<link rel="manifest" href="manifest.json">
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Arial,sans-serif;background:#f7f7f8;color:#171717}
+header{padding:calc(env(safe-area-inset-top) + 18px) 20px 14px;background:white;position:sticky;top:0;z-index:2;border-bottom:1px solid #eee}
+h1{margin:0;font-size:27px} .sub{color:#777;margin-top:4px}
+main{padding:18px 16px 95px;max-width:680px;margin:auto}.card{background:white;border-radius:22px;padding:20px;margin-bottom:14px;box-shadow:0 2px 12px #00000008}
+.hero{background:linear-gradient(135deg,#fff7e6,#fff);text-align:center}.emoji{font-size:46px}.label{text-transform:uppercase;font-size:12px;font-weight:700;color:#888;letter-spacing:.08em}
+.amount{font-size:43px;font-weight:800;margin:8px 0 20px}.btn{border:0;border-radius:15px;padding:14px 18px;font-size:16px;font-weight:700;background:#f59e0b;color:white;width:100%}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.stat{background:white;border-radius:18px;padding:17px}.stat b{display:block;font-size:23px;margin-top:6px}
+nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #ddd;display:flex;padding:8px 8px calc(8px + env(safe-area-inset-bottom));z-index:3}
+nav button{flex:1;border:0;background:none;padding:8px 4px;color:#777;font-size:12px}nav button.active{color:#f59e0b;font-weight:700}nav span{display:block;font-size:22px;margin-bottom:2px}
+input{width:100%;padding:14px;border:1px solid #ddd;border-radius:13px;font-size:18px;margin:8px 0 12px}
+.row{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid #eee}.row:last-child{border:0}
+.secondary{background:#eee;color:#333}.danger{background:#fee2e2;color:#b91c1c}
+.small{font-size:13px;color:#777}.hidden{display:none}
+table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:10px 5px;border-bottom:1px solid #eee}td:last-child,th:last-child{text-align:right}
+</style>
+</head>
+<body>
+<header><h1>🍦 Eiscafé Umsatz</h1><div class="sub" id="date"></div></header>
+<main id="app"></main>
+<nav>
+<button data-tab="home" class="active"><span>🏠</span>Heute</button>
+<button data-tab="calendar"><span>📅</span>Kalender</button>
+<button data-tab="stats"><span>📊</span>Auswertung</button>
+</nav>
+<script>
+const KEY="eiscafe_umsatz_v1";
+let data=JSON.parse(localStorage.getItem(KEY)||"{}");
+let tab="home";
+const eur=n=>new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR"}).format(n||0);
+const pad=n=>String(n).padStart(2,"0");
+const key=d=>{let x=new Date(d);return x.getFullYear()+"-"+pad(x.getMonth()+1)+"-"+pad(x.getDate())};
+const today=key(new Date());
+const fmt=d=>new Date(d+"T12:00:00").toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric"});
+const monthPrefix=(d=new Date())=>d.getFullYear()+"-"+pad(d.getMonth()+1);
+const monthSum=(p)=>Object.entries(data).filter(([k])=>k.startsWith(p)).reduce((s,[,v])=>s+Number(v),0);
+const yearSum=y=>Object.entries(data).filter(([k])=>k.startsWith(y+"-")).reduce((s,[,v])=>s+Number(v),0);
+function save(){localStorage.setItem(KEY,JSON.stringify(data));render()}
+function entryForm(d=today){
+ let v=data[d]??"";
+ app.innerHTML=`<div class="card"><div class="label">Datum</div><h2>${fmt(d)}</h2>
+ <div class="label">Tagesumsatz</div><input id="amount" inputmode="decimal" value="${v}" placeholder="z. B. 385,50">
+ <button class="btn" onclick="saveEntry('${d}')">Speichern</button>
+ ${v!==""?`<button class="btn danger" style="margin-top:10px" onclick="deleteEntry('${d}')">Eintrag löschen</button>`:""}</div>`;
+}
+function saveEntry(d){let raw=document.getElementById("amount").value.replace(",",".");let n=Number(raw);if(!isFinite(n)||n<0)return alert("Bitte einen gültigen Betrag eingeben.");data[d]=Math.round(n*100)/100;save()}
+function deleteEntry(d){delete data[d];save()}
+function renderHome(){
+ app.innerHTML=`<div class="card hero"><div class="emoji">🍦</div><div class="label">Heute</div>
+ <div class="amount">${eur(data[today])}</div><button class="btn" onclick="entryForm('${today}')">＋ Umsatz eintragen</button></div>
+ <div class="grid"><div class="stat"><span class="small">Dieser Monat</span><b>${eur(monthSum(monthPrefix()))}</b></div>
+ <div class="stat"><span class="small">Jahr</span><b>${eur(yearSum(new Date().getFullYear()))}</b></div></div>
+ <div class="card"><div class="row"><span>Einträge diesen Monat</span><b>${Object.keys(data).filter(k=>k.startsWith(monthPrefix())).length}</b></div>
+ <div class="row"><span>Durchschnitt / Tag</span><b>${eur((()=>{let n=Object.keys(data).filter(k=>k.startsWith(monthPrefix())).length;return n?monthSum(monthPrefix())/n:0})())}</b></div></div>`;
+}
+function renderCalendar(){
+ let entries=Object.entries(data).sort((a,b)=>b[0].localeCompare(a[0]));
+ app.innerHTML=`<div class="card"><h2>Umsatz eintragen</h2><input id="day" type="date" value="${today}"><button class="btn" onclick="entryForm(document.getElementById('day').value)">Öffnen</button></div>
+ <div class="card"><h2>Letzte Einträge</h2>${entries.length?entries.slice(0,31).map(([d,v])=>`<div class="row"><span>${fmt(d)}</span><b>${eur(v)}</b></div>`).join(""):"<p class='small'>Noch keine Umsätze eingetragen.</p>"}</div>`;
+}
+function renderStats(){
+ let now=new Date(), p=monthPrefix(now), y=now.getFullYear(), entries=Object.entries(data).filter(([k])=>k.startsWith(p));
+ let avg=entries.length?monthSum(p)/entries.length:0;
+ let rows=entries.sort((a,b)=>b[0].localeCompare(a[0])).map(([d,v])=>`<tr><td>${fmt(d)}</td><td>${eur(v)}</td></tr>`).join("");
+ app.innerHTML=`<div class="card"><h2>Monatliche Auswertung</h2><div class="grid">
+ <div class="stat"><span class="small">Monat</span><b>${eur(monthSum(p))}</b></div><div class="stat"><span class="small">Durchschnitt</span><b>${eur(avg)}</b></div></div></div>
+ <div class="card"><h2>Jahresumsatz ${y}</h2><div class="amount" style="font-size:34px">${eur(yearSum(y))}</div></div>
+ <div class="card"><h2>Dieser Monat</h2><table><tr><th>Tag</th><th>Umsatz</th></tr>${rows||"<tr><td colspan='2'>Keine Einträge</td></tr>"}</table></div>
+ <div class="card"><button class="btn secondary" onclick="exportData()">Daten exportieren</button><button class="btn danger" style="margin-top:10px" onclick="clearData()">Alle Daten löschen</button></div>`;
+}
+function exportData(){let blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});let a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="eiscafe-umsatz.json";a.click();URL.revokeObjectURL(a.href)}
+function clearData(){if(confirm("Wirklich alle Umsätze löschen?")){data={};save()}}
+function render(){document.getElementById("date").textContent=new Date().toLocaleDateString("de-DE",{weekday:"long",day:"2-digit",month:"long",year:"numeric"});document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));if(tab==="home")renderHome();if(tab==="calendar")renderCalendar();if(tab==="stats")renderStats()}
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;render()});render();
+</script>
+</body></html>
